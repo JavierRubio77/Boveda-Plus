@@ -1,0 +1,15 @@
+/node_modules/
+/dist/
+/outputs/
+/.xlsx-template-work/
+/.wrangler/
+.env
+.env.*
+.dev.vars*
+*.pwvault
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+Thumbs.db
+`n*.zip
