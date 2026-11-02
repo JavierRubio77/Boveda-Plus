@@ -1,3 +1,4 @@
+import { plaintextPasswordList } from './plaintext-export.js';
 import './styles.css';
 import * as XLSX from 'xlsx';
 import { migrateEntries } from './vault-data.js';
@@ -407,7 +408,8 @@ async function snoozeAlert(id) {
 
 function renderModal() {
   if (state.modal === 'alerts') return renderAlertsModal();
-  if (state.modal === 'menu') return `<div class="modal-backdrop menu-backdrop" data-action="close-modal"><section class="sheet menu-sheet" data-sheet><div class="sheet-handle"></div><div class="sheet-title"><div><p class="eyebrow">BÓVEDA PLUS</p><h2>Herramientas</h2></div><button class="icon-button" data-action="close-modal">×</button></div><div class="menu-list"><button data-action="export"><span>↓</span><div><strong>Descargar copia cifrada</strong><small>Guárdala en tus archivos o nube personal</small></div></button><button data-action="import"><span>↑</span><div><strong>Importar copia cifrada</strong><small>Recupera un archivo .pwvault</small></div></button><button data-action="download-template"><span>▤</span><div><strong>Descargar plantilla vacía</strong><small>Plantilla oficial para importar contraseñas</small></div></button><button data-action="import-plain"><span>⇧</span><div><strong>Importar contraseñas en plano</strong><small>Carga la plantilla rellenada; se cifrará en este dispositivo</small></div></button><button data-action="change-master"><span>⌘</span><div><strong>Cambiar clave maestra</strong><small>Se conserva tu contenido cifrado</small></div></button></div><div class="menu-note">Los archivos se procesan aquí en el dispositivo. La importación en plano los cifra dentro de la bóveda; no los sube a ningún servidor.</div></section></div>`;
+  if (state.modal === 'export-plain') return `<div class="modal-backdrop" data-action="close-modal"><section class="sheet dialog" data-sheet role="dialog" aria-modal="true" aria-labelledby="plain-export-title"><div class="sheet-title"><h2 id="plain-export-title">Lista para imprimir</h2><button class="icon-button" data-action="close-modal" aria-label="Cerrar">×</button></div><p class="subtle">Se descargarán todas tus contraseñas ordenadas por nombre, con las columnas Nombre, Usuario y Contraseña.</p><div class="pin-warning"><span>!</span><p>Este archivo no está cifrado. Cualquiera que lo abra o encuentre la copia impresa podrá leer tus contraseñas. Guarda la lista en un lugar seguro.</p></div><div class="form-actions"><button class="button button-soft" data-action="close-modal">Cancelar</button><button class="button button-primary" data-action="confirm-export-plain">Descargar .txt sin cifrar</button></div></section></div>`;
+  if (state.modal === 'menu') return `<div class="modal-backdrop menu-backdrop" data-action="close-modal"><section class="sheet menu-sheet" data-sheet><div class="sheet-handle"></div><div class="sheet-title"><div><p class="eyebrow">BÓVEDA PLUS</p><h2>Herramientas</h2></div><button class="icon-button" data-action="close-modal">×</button></div><div class="menu-list"><button data-action="export"><span>↓</span><div><strong>Descargar copia cifrada</strong><small>Guárdala en tus archivos o nube personal</small></div></button><button data-action="export-plain"><span>▤</span><div><strong>Descargar lista en texto plano</strong><small>Nombre, usuario y contraseña · Sin cifrar, para imprimir</small></div></button><button data-action="import"><span>↑</span><div><strong>Importar copia cifrada</strong><small>Recupera un archivo .pwvault</small></div></button><button data-action="download-template"><span>▤</span><div><strong>Descargar plantilla vacía</strong><small>Plantilla oficial para importar contraseñas</small></div></button><button data-action="import-plain"><span>⇧</span><div><strong>Importar contraseñas en plano</strong><small>Carga la plantilla rellenada; se cifrará en este dispositivo</small></div></button><button data-action="change-master"><span>⌘</span><div><strong>Cambiar clave maestra</strong><small>Se conserva tu contenido cifrado</small></div></button></div><div class="menu-note">Los archivos se procesan aquí en el dispositivo. La importación en plano los cifra dentro de la bóveda; no los sube a ningún servidor.</div></section></div>`;
   if (state.modal === 'confirm-plain-import') {
     const count = state.pendingPlainImport?.length || 0;
     const categoryCount = new Set((state.pendingPlainImport || []).map((entry) => entry.category).filter(Boolean)).size;
@@ -523,6 +525,20 @@ function revealDetailPassword(id) {
   state.passwordRevealTimer = window.setTimeout(() => {
     output.textContent = maskedPassword(entry.password);
   }, PASSWORD_REVEAL_MS);
+}
+
+function downloadPlaintext() {
+  if (!isUnlocked()) return;
+  const blob = new Blob([plaintextPasswordList(state.entries)], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `boveda-plus-lista-sin-cifrar-${new Date().toISOString().slice(0, 10)}.txt`;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  state.modal = null;
+  render();
+  showToast('Lista de texto descargada', 'success');
 }
 
 function downloadBackup() {
@@ -836,6 +852,8 @@ document.addEventListener('click', async (event) => {
     return render();
   }
   if (action === 'close-modal') { if (event.target.closest('[data-sheet]') && !target.classList.contains('icon-button')) return; state.modal = null; state.categoryDeleteTarget = null; state.pendingPlainImport = null; return render(); }
+  if (action === 'export-plain') { state.modal = 'export-plain'; return render(); }
+  if (action === 'confirm-export-plain') return downloadPlaintext();
   if (action === 'export') return downloadBackup();
   if (action === 'import') return openImportPicker();
   if (action === 'download-template') return downloadTemplate();
